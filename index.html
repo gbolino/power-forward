@@ -891,8 +891,16 @@ async function handleLogin() {
   setAuthMsg('', false);
   if (!email || !password) return setAuthMsg('Please enter your email and password.', true);
   setAuthMsg('Signing in…', false);
-  const { error } = await sb.auth.signInWithPassword({ email, password });
-  if (error && error.message) setAuthMsg(error.message, true); else if (!error) setAuthMsg("Signed in! Loading…", false);
+  const { data: loginData, error: loginError } = await sb.auth.signInWithPassword({ email, password });
+  if (loginError) {
+    const msg = loginError.message || loginError.msg || loginError.error_description || JSON.stringify(loginError);
+    setAuthMsg(msg || 'Login failed', true);
+    console.error('Login error full object:', JSON.stringify(loginError));
+  } else if (loginData?.session) {
+    setAuthMsg('Signed in! Loading…', false);
+  } else {
+    setAuthMsg('No session — data: ' + JSON.stringify(loginData), true);
+  }
 }
 
 async function handleSignup() {
