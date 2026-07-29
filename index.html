@@ -420,6 +420,13 @@ function showChangePin(){
 
 // ── BOOT ──────────────────────────────────────────────────
 async function bootApp(){
+  // Clear all stale state first
+  todayCompletions={};
+  allCompletions=[];
+  plannerOverrides={};
+  sessionLogs={};
+  exerciseLibrary={};
+
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app').style.display='flex';
   document.getElementById('user-name-display').textContent=currentUser.display_name.split(' ')[0];
@@ -430,7 +437,9 @@ async function bootApp(){
   }
   document.getElementById('page-content').innerHTML='<div class="loading"><div class="spinner"></div> Loading…</div>';
   try{
-    await Promise.all([loadExercises(),loadTodayCompletions(),loadAllCompletions(),loadPlannerOverrides(),loadSessionLogs()]);
+    // Load sequentially so exercises are ready before workout is built
+    await loadExercises();
+    await Promise.all([loadTodayCompletions(),loadAllCompletions(),loadPlannerOverrides(),loadSessionLogs()]);
     updateDoneCount();
     showTab('today');
   }catch(e){
@@ -593,6 +602,9 @@ function renderWorkoutSections(workout,type,date){
 }
 
 async function toggleExercise(exId,exName,category,workoutType,dateStr){
+  // Save scroll position
+  const pc=document.getElementById('page-content');
+  if(pc) pc._savedScroll=pc.scrollTop;
   if(todayCompletions[exId]){
     await sbDelete('exercise_completions','user_id=eq.'+currentUser.id+'&date=eq.'+dateStr+'&exercise_id=eq.'+exId);
     delete todayCompletions[exId];
@@ -603,8 +615,11 @@ async function toggleExercise(exId,exName,category,workoutType,dateStr){
   // Update allCompletions cache
   await loadAllCompletions();
   updateDoneCount();
-  // Re-render just the exercise card without full page refresh
+  // Re-render today to reflect new state
   renderToday();
+  // Restore scroll position
+  const el = document.getElementById('page-content');
+  if(el) el.scrollTop = el._savedScroll || 0;
 }
 
 async function saveLog(key){
@@ -971,8 +986,19 @@ async function addUser(){
 async function init(){
   const saved=localStorage.getItem('pf_user');
   if(saved){
-    try{currentUser=JSON.parse(saved);await bootApp();return;}
-    catch(e){localStorage.removeItem('pf_user');}
+    try{
+      currentUser=JSON.parse(saved);
+      // Always reload user record in case role changed
+      const fresh=await sbGet('app_users','select=id,display_name,role&id=eq.'+currentUser.id);
+      if(fresh&&fresh.length>0){
+        currentUser=fresh[0];
+        localStorage.setItem('pf_user',JSON.stringify(currentUser));
+      }
+      await bootApp();
+      return;
+    }catch(e){
+      localStorage.removeItem('pf_user');
+    }
   }
   await loadUsers();
 }
