@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Power Forward">
+<meta name="theme-color" content="#1a1f2e">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Power Forward</title>
+
+<style>
+  :root {
+    --navy:   #1a1f2e;
+    --navy2:  #242938;
+    --navy3:  #2e3447;
+    --teal:   #2dd4bf;
+    --teal2:  #14b8a6;
+    --slate:  #94a3b8;
+    --light:  #e2e8f0;
+    --white:  #f8fafc;
+    --amber:  #f59e0b;
+    --red:    #f87171;
+    --green:  #4ade80;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bot: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: var(--font);
+    background: var(--navy);
+    color: var(--light);
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  /* ── AUTH SCREEN ─────────────────────────────────────── */
+  #auth-screen {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+    background: linear-gradient(160deg, #1a1f2e 0%, #0f172a 100%);
+  }
+
+  .auth-logo {
+    font-size: 42px;
+    margin-bottom: 8px;
+  }
+
+  .auth-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+
+  .auth-sub {
+    font-size: 14px;
+    color: var(--slate);
+    margin-bottom: 2.5rem;
+    text-align: center;
+  }
+
+  .auth-card {
+    background: var(--navy2);
+    border: 1px solid var(--navy3);
+    border-radius: var(--radius);
+    padding: 1.75rem;
+    width: 100%;
+    max-width: 380px;
+  }
+
+  .auth-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--navy3);
+    border-radius: var(--radius-sm);
+    padding: 4px;
+    margin-bottom: 1.5rem;
+  }
+
+  .auth-tab {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--slate);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: all 0.15s;
+  }
+
+  .auth-tab.active {
+    background: var(--teal);
+    color: var(--navy);
+  }
+
+  .field {
+    margin-bottom: 1rem;
+  }
+
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--slate);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .field input {
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--navy3);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: var(--radius-sm);
+    color: var(--white);
+    font-size: 16px;
+    font-family: var(--font);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .field input:focus {
+    border-color: var(--teal);
+  }
+
+  .btn-primary {
+    width: 100%;
+    padding: 13px;
+    background: var(--teal);
+    color: var(--navy);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: opacity 0.15s;
+    margin-top: 4px;
+  }
+
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .auth-error {
+    color: var(--red);
+    font-size: 13px;
+    margin-top: 10px;
+    text-align: center;
+    min-height: 20px;
+  }
+
+  /* ── MAIN APP ────────────────────────────────────────── */
+  #app { display: none; flex-direction: column; height: 100vh; height: 100dvh; }
+
+  .app-header {
+    background: var(--navy2);
+    border-bottom: 1px solid var(--navy3);
+    padding: calc(var(--safe-top) + 12px) 1rem 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .app-header-left { display: flex; align-items: center; gap: 10px; }
+
+  .app-logo-sm { font-size: 20px; }
+
+  .app-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: -0.3px;
+  }
+
+  .streak-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--navy3);
+    border-radius: 20px;
+    padding: 5px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--amber);
+  }
+
+  .page-content {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 1rem;
+    padding-bottom: calc(80px + var(--safe-bot));
+  }
+
+  /* ── BOTTOM NAV ──────────────────────────────────────── */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--navy2);
+    border-top: 1px solid var(--navy3);
+    display: flex;
+    padding-bottom: var(--safe-bot);
+    flex-shrink: 0;
+    z-index: 100;
+  }
+
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 4px 8px;
+    border: none;
+    background: transparent;
+    color: var(--slate);
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: var(--font);
+    gap: 4px;
+    transition: color 0.15s;
+  }
+
+  .nav-item.active { color: var(--teal); }
+  .nav-icon { font-size: 20px; line-height: 1; }
+
+  /* ── CARDS ───────────────────────────────────────────── */
+  .card {
+    background: var(--navy2);
+    border: 1px solid var(--navy3);
+    border-radius: var(--radius);
+    padding: 1.1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--slate);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.75rem;
+  }
+
+  /* ── TODAY TAB ───────────────────────────────────────── */
+  .today-hero {
+    background: linear-gradient(135deg, var(--navy2) 0%, #1e2d3d 100%);
+    border: 1px solid var(--navy3);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    margin-bottom: 0.75rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .today-hero::before {
+    content: '';
+    position: absolute;
+    top: -20px; right: -20px;
+    width: 100px; height: 100px;
+    background: var(--teal);
+    opacity: 0.05;
+    border-radius: 50%;
+  }
+
+  .today-date {
+    font-size: 12px;
+    color: var(--slate);
+    margin-bottom: 4px;
+  }
+
+  .today-workout {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: -0.4px;
+    margin-bottom: 4px;
+  }
+
+  .today-goal {
+    font-size: 12px;
+    color: var(--teal);
+    margin-bottom: 1rem;
+  }
+
+  .complete-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: all 0.15s;
+  }
+
+  .complete-btn.done {
+    background: rgba(74, 222, 128, 0.15);
+    color: var(--green);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+  }
+
+  .complete-btn.not-done {
+    background: var(--teal);
+    color: var(--navy);
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--slate);
+    margin: 1rem 0 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .section-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .ex-card {
+    background: var(--navy3);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 6px;
+  }
+
+  .ex-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--white);
+    margin-bottom: 2px;
+  }
+
+  .ex-meta {
+    font-size: 12px;
+    color: var(--slate);
+  }
+
+  .ex-notes {
+    font-size: 11px;
+    color: var(--teal);
+    margin-top: 5px;
+    padding: 5px 8px;
+    background: rgba(45, 212, 191, 0.07);
+    border-radius: 6px;
+    border-left: 2px solid var(--teal2);
+    line-height: 1.4;
+  }
+
+  .log-area {
+    width: 100%;
+    background: var(--navy3);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: var(--radius-sm);
+    color: var(--light);
+    font-size: 14px;
+    font-family: var(--font);
+    padding: 10px 12px;
+    resize: vertical;
+    min-height: 80px;
+    outline: none;
+    line-height: 1.5;
+  }
+
+  .log-area:focus { border-color: var(--teal); }
+
+  .btn-sm {
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--navy3);
+    background: var(--navy3);
+    color: var(--light);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: all 0.15s;
+  }
+
+  .btn-sm:hover { border-color: var(--teal); color: var(--teal); }
+
+  .btn-teal {
+    background: var(--teal);
+    color: var(--navy);
+    border-color: var(--teal);
+  }
+
+  .btn-teal:hover { opacity: 0.85; color: var(--navy); }
+
+  /* ── WEEK TAB ────────────────────────────────────────── */
+  .week-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 0.75rem;
+  }
+
+  .week-label {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--light);
+    text-align: center;
+  }
+
+  .icon-btn {
+    width: 32px; height: 32px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--navy3);
+    background: var(--navy2);
+    color: var(--light);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.15s;
+  }
+
+  .icon-btn:hover { border-color: var(--teal); }
+
+  .day-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 0.75rem;
+  }
+
+  .day-cell {
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--navy3);
+    padding: 6px 2px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--navy2);
+    transition: all 0.15s;
+  }
+
+  .day-cell:hover { border-color: var(--teal); }
+  .day-cell.today { border-color: var(--teal); background: rgba(45,212,191,0.08); }
+  .day-cell.completed { background: rgba(74,222,128,0.1); border-color: rgba(74,222,128,0.3); }
+  .day-cell.selected { border-color: var(--teal); border-width: 2px; }
+  .day-cell.rest-day { opacity: 0.5; }
+
+  .day-abbr { font-size: 9px; color: var(--slate); margin-bottom: 2px; }
+  .day-num { font-size: 14px; font-weight: 600; color: var(--white); }
+  .day-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--teal); margin: 3px auto 0; }
+  .day-check { font-size: 10px; color: var(--green); margin-top: 2px; }
+
+  /* ── PLANNER ─────────────────────────────────────────── */
+  .planner-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--navy3);
+  }
+
+  .planner-row:last-child { border-bottom: none; }
+
+  .planner-day { font-size: 13px; font-weight: 500; color: var(--slate); min-width: 36px; }
+
+  .planner-select {
+    flex: 1;
+    background: var(--navy3);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: var(--radius-sm);
+    color: var(--light);
+    font-size: 13px;
+    font-family: var(--font);
+    padding: 7px 10px;
+    outline: none;
+  }
+
+  .planner-select:focus { border-color: var(--teal); }
+
+  /* ── LIBRARY ─────────────────────────────────────────── */
+  .lib-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 0.75rem;
+  }
+
+  .stat-box {
+    background: var(--navy2);
+    border: 1px solid var(--navy3);
+    border-radius: var(--radius);
+    padding: 12px 8px;
+    text-align: center;
+  }
+
+  .stat-num { font-size: 22px; font-weight: 700; color: var(--teal); }
+  .stat-lbl { font-size: 10px; color: var(--slate); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .cat-header {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--teal);
+    padding: 10px 0 6px;
+    border-bottom: 1px solid var(--navy3);
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .lib-ex-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 4px;
+    background: var(--navy3);
+    transition: opacity 0.15s;
+  }
+
+  .lib-ex-row.inactive { opacity: 0.4; }
+
+  .lib-ex-info { flex: 1; }
+  .lib-ex-name { font-size: 13px; font-weight: 500; color: var(--white); }
+  .lib-ex-meta { font-size: 11px; color: var(--slate); margin-top: 2px; }
+
+  .toggle-btn {
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid;
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font);
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+
+  .toggle-btn.active-ex { border-color: var(--green); color: var(--green); background: rgba(74,222,128,0.1); }
+  .toggle-btn.inactive-ex { border-color: var(--slate); color: var(--slate); background: transparent; }
+
+  /* ── PROGRESS ────────────────────────────────────────── */
+  .progress-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--navy3);
+    font-size: 13px;
+  }
+
+  .progress-row:last-child { border-bottom: none; }
+  .progress-date { color: var(--slate); font-size: 12px; }
+  .check-icon { color: var(--green); font-size: 16px; }
+
+  /* ── PROFILE MENU ────────────────────────────────────── */
+  .profile-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--navy3);
+    border: none;
+    border-radius: 20px;
+    padding: 5px 10px 5px 6px;
+    cursor: pointer;
+    color: var(--light);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--font);
+  }
+
+  .avatar {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--teal);
+    color: var(--navy);
+    font-size: 11px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .dropdown {
+    position: absolute;
+    top: calc(var(--safe-top) + 52px);
+    right: 1rem;
+    background: var(--navy2);
+    border: 1px solid var(--navy3);
+    border-radius: var(--radius);
+    overflow: hidden;
+    z-index: 200;
+    min-width: 160px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    display: none;
+  }
+
+  .dropdown.open { display: block; }
+
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    font-size: 14px;
+    color: var(--light);
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    width: 100%;
+    font-family: var(--font);
+    text-align: left;
+    transition: background 0.1s;
+  }
+
+  .dropdown-item:hover { background: var(--navy3); }
+  .dropdown-item.danger { color: var(--red); }
+
+  /* ── ADMIN PANEL ─────────────────────────────────────── */
+  .admin-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .admin-form input, .admin-form select, .admin-form textarea {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--navy3);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: var(--radius-sm);
+    color: var(--white);
+    font-size: 14px;
+    font-family: var(--font);
+    outline: none;
+  }
+
+  .admin-form input:focus, .admin-form select:focus, .admin-form textarea:focus {
+    border-color: var(--teal);
+  }
+
+  .admin-form textarea { resize: vertical; min-height: 60px; }
+
+  /* ── LOADING ─────────────────────────────────────────── */
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 120px;
+    color: var(--slate);
+    font-size: 14px;
+    gap: 8px;
+  }
+
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid var(--navy3);
+    border-top-color: var(--teal);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .rest-card {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: var(--slate);
+  }
+
+  .rest-emoji { font-size: 48px; margin-bottom: 12px; }
+  .rest-text { font-size: 15px; }
+
+  .empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: var(--slate);
+    font-size: 14px;
+  }
+
+  /* ── TOAST ───────────────────────────────────────────── */
+  .toast {
+    position: fixed;
+    bottom: calc(80px + var(--safe-bot) + 12px);
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--navy2);
+    border: 1px solid var(--navy3);
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--light);
+    opacity: 0;
+    transition: all 0.25s;
+    z-index: 300;
+    white-space: nowrap;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .tab-page { display: none; }
+  .tab-page.active { display: block; }
+
+  /* ── IMPORT SECTION ──────────────────────────────────── */
+  .import-zone {
+    border: 1.5px dashed var(--navy3);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    margin-bottom: 0.75rem;
+    transition: border-color 0.15s;
+  }
+
+  .import-zone:hover { border-color: var(--teal); }
+  .import-icon { font-size: 28px; margin-bottom: 8px; }
+  .import-label { font-size: 13px; font-weight: 500; color: var(--light); }
+  .import-sub { font-size: 12px; color: var(--slate); margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ── AUTH SCREEN ──────────────────────────────────────── -->
+<div id="auth-screen">
+  <div class="auth-logo">⚡</div>
+  <div class="auth-title">Power Forward</div>
+  <div class="auth-sub">Strength · Flexibility · Agility</div>
+
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">Sign in</button>
+      <button class="auth-tab" onclick="switchAuthTab('signup')">Create account</button>
+    </div>
+
+    <div id="login-form">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn-primary" onclick="handleLogin()">Sign in</button>
+    </div>
+
+    <div id="signup-form" style="display:none">
+      <div class="field">
+        <label>Your name</label>
+        <input type="text" id="signup-name" placeholder="First name">
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="signup-email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="signup-password" placeholder="8+ characters" autocomplete="new-password">
+      </div>
+      <button class="btn-primary" onclick="handleSignup()">Create account</button>
+    </div>
+
+    <div class="auth-error" id="auth-error"></div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ─────────────────────────────────────────── -->
+<div id="app">
+  <div class="app-header">
+    <div class="app-header-left">
+      <span class="app-logo-sm">⚡</span>
+      <span class="app-title">Power Forward</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="streak-badge">🔥 <span id="streak-num">0</span></div>
+      <button class="profile-pill" onclick="toggleDropdown()" id="profile-btn">
+        <div class="avatar" id="user-avatar">?</div>
+        <span id="user-name-display">—</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="dropdown" id="dropdown">
+    <button class="dropdown-item" onclick="showAdminPanel()" id="admin-menu-item" style="display:none">⚙️ Manage library</button>
+    <button class="dropdown-item danger" onclick="handleSignOut()">↩ Sign out</button>
+  </div>
+
+  <div class="page-content" id="page-content">
+    <div class="loading"><div class="spinner"></div> Loading…</div>
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nav-item active" onclick="showTab('today')" id="nav-today">
+      <span class="nav-icon">📋</span>Today
+    </button>
+    <button class="nav-item" onclick="showTab('week')" id="nav-week">
+      <span class="nav-icon">📅</span>Week
+    </button>
+    <button class="nav-item" onclick="showTab('planner')" id="nav-planner">
+      <span class="nav-icon">✏️</span>Planner
+    </button>
+    <button class="nav-item" onclick="showTab('library')" id="nav-library">
+      <span class="nav-icon">📚</span>Library
+    </button>
+    <button class="nav-item" onclick="showTab('progress')" id="nav-progress">
+      <span class="nav-icon">📈</span>Progress
+    </button>
+  </nav>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ── SUPABASE + APP LOGIC ─────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ── CONFIG ────────────────────────────────────────────────
+const SUPABASE_URL = 'https://hecuirabfxjevlpibtwe.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhlY3VpcmFiZnhqZXZscGlidHdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMjI4NTUsImV4cCI6MjEwMDg5ODg1NX0.Wwlg7tDmWDK68BKu3hZOU9mRZA0CNuQbMbFe1wQcwrc';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── STATE ─────────────────────────────────────────────────
+let currentUser = null;
+let currentProfile = null;
+let exerciseLibrary = {};
+let completedDates = {};
+let plannerOverrides = {};
+let sessionLogs = {};
+let weekOffset = 0;
+let selectedDay = null;
+let currentTab = 'today';
+
+const SCHEDULE = ['strength_lower','aerobic','upper_push','rest','upper_pull','rest','aerobic'];
+const WORKOUT_META = {
+  strength_lower: { name: 'Lower body strength', goal: 'Glutes · Hips · Single-leg balance', color: '#4ade80' },
+  aerobic:        { name: 'Aerobic session',      goal: 'Cardio · Endurance · Active recovery', color: '#60a5fa' },
+  upper_push:     { name: 'Upper body — push',    goal: 'Chest · Shoulders · Triceps',          color: '#f472b6' },
+  upper_pull:     { name: 'Upper body — pull',    goal: 'Back · Biceps · Rear delts',           color: '#a78bfa' },
+  rest:           { name: 'Rest & recovery',       goal: 'Sleep · Hydration · Light movement',  color: '#94a3b8' },
+};
+const CAT_MAP = {
+  strength_lower: ['Lower Body'],
+  upper_push:     ['Upper Push'],
+  upper_pull:     ['Upper Pull'],
+  aerobic:        [],
+};
+const DAY_ABBR = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+// ── AUTH ──────────────────────────────────────────────────
+function switchAuthTab(tab) {
+  document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('signup-form').style.display = tab === 'signup' ? 'block' : 'none';
+  document.querySelectorAll('.auth-tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0) === (tab === 'login'));
+  });
+  setAuthMsg('', false);
+}
+
+async function handleLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  setAuthMsg('', false);
+  if (!email || !password) return setAuthMsg('Please enter your email and password.', true);
+  setAuthMsg('Signing in…', false);
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) setAuthMsg(error.message, true);
+}
+
+async function handleSignup() {
+  const name = document.getElementById('signup-name').value.trim();
+  const email = document.getElementById('signup-email').value.trim();
+  const password = document.getElementById('signup-password').value;
+  if (!name) return setAuthMsg('Please enter your name.', true);
+  if (!email) return setAuthMsg('Please enter your email.', true);
+  if (password.length < 8) return setAuthMsg('Password must be at least 8 characters.', true);
+  setAuthMsg('Creating account…', false);
+  const { data, error } = await sb.auth.signUp({
+    email, password,
+    options: { data: { display_name: name } }
+  });
+  if (error) {
+    setAuthMsg(error.message, true);
+  } else if (data?.user) {
+    // Try signing in immediately (works when email confirmation is disabled)
+    const { error: loginErr } = await sb.auth.signInWithPassword({ email, password });
+    if (loginErr) {
+      setAuthMsg('Account created — please sign in.', false);
+      switchAuthTab('login');
+      document.getElementById('login-email').value = email;
+    }
+    // If no error, onAuthStateChange fires and boots the app automatically
+  } else {
+    setAuthMsg('Something went wrong. Please try again.', true);
+  }
+}
+
+function setAuthMsg(msg, isError) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.style.color = isError ? 'var(--red)' : 'var(--teal)';
+}
+
+async function handleSignOut() {
+  await sb.auth.signOut();
+  location.reload();
+}
+
+function toggleDropdown() {
+  document.getElementById('dropdown').classList.toggle('open');
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#profile-btn') && !e.target.closest('#dropdown')) {
+    document.getElementById('dropdown').classList.remove('open');
+  }
+});
+
+// ── INIT ──────────────────────────────────────────────────
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (session?.user) {
+    currentUser = session.user;
+    await bootApp();
+  } else {
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+  }
+});
+
+async function bootApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+
+  // Load profile
+  const { data: prof } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  currentProfile = prof;
+
+  // Update header
+  const name = prof?.display_name || currentUser.email.split('@')[0];
+  document.getElementById('user-name-display').textContent = name.split(' ')[0];
+  document.getElementById('user-avatar').textContent = name[0].toUpperCase();
+
+  // Show admin menu if admin
+  if (prof?.role === 'admin') {
+    document.getElementById('admin-menu-item').style.display = 'flex';
+  }
+
+  // Load all data in parallel
+  await Promise.all([
+    loadExercises(),
+    loadCompletedDates(),
+    loadPlannerOverrides(),
+    loadSessionLogs(),
+  ]);
+
+  updateStreak();
+  showTab('today');
+}
+
+// ── DATA LOADERS ──────────────────────────────────────────
+async function loadExercises() {
+  const { data } = await sb.from('exercises').select('*').order('sort_order');
+  exerciseLibrary = {};
+  (data || []).forEach(ex => {
+    if (!exerciseLibrary[ex.category]) exerciseLibrary[ex.category] = [];
+    exerciseLibrary[ex.category].push(ex);
+  });
+}
+
+async function loadCompletedDates() {
+  const { data } = await sb.from('completed_workouts')
+    .select('date, workout_type')
+    .eq('user_id', currentUser.id);
+  completedDates = {};
+  (data || []).forEach(r => { completedDates[r.date] = r.workout_type; });
+}
+
+async function loadPlannerOverrides() {
+  const { data } = await sb.from('planner_overrides')
+    .select('date, workout_type')
+    .eq('user_id', currentUser.id);
+  plannerOverrides = {};
+  (data || []).forEach(r => { plannerOverrides[r.date] = r.workout_type; });
+}
+
+async function loadSessionLogs() {
+  const { data } = await sb.from('session_logs')
+    .select('date, notes')
+    .eq('user_id', currentUser.id);
+  sessionLogs = {};
+  (data || []).forEach(r => { sessionLogs[r.date] = r.notes; });
+}
+
+// ── HELPERS ───────────────────────────────────────────────
+function dateKey(d) { return d.toISOString().slice(0, 10); }
+
+function getWorkoutType(date) {
+  const key = dateKey(date);
+  if (plannerOverrides[key]) return plannerOverrides[key];
+  const base = new Date(2024, 0, 7);
+  const diff = Math.floor((date - base) / 86400000);
+  return SCHEDULE[((diff % 7) + 7) % 7];
+}
+
+function getWeekNum(date) {
+  const base = new Date(2024, 0, 7);
+  return Math.floor((date - base) / (7 * 86400000));
+}
+
+function rotateExercises(category, weekNum, count) {
+  const pool = (exerciseLibrary[category] || []).filter(e => e.active);
+  if (!pool.length) return [];
+  const start = (weekNum * count) % pool.length;
+  const result = [];
+  for (let i = 0; i < Math.min(count, pool.length); i++) {
+    result.push(pool[(start + i) % pool.length]);
+  }
+  return result;
+}
+
+function buildWorkout(type, date) {
+  const wn = getWeekNum(date);
+  return {
+    warmup:   rotateExercises('Warm-Up', wn, 6),
+    core:     rotateExercises('Core', wn, 3),
+    strength: (CAT_MAP[type] || []).flatMap(cat => rotateExercises(cat, wn, 6)),
+    cooldown: rotateExercises('Cool-Down', wn, 5),
+  };
+}
+
+function getWeekStart(offset = 0) {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - d.getDay() + offset * 7);
+  return d;
+}
+
+function updateStreak() {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let streak = 0, d = new Date(today);
+  for (let i = 0; i < 365; i++) {
+    const k = dateKey(d);
+    const type = getWorkoutType(d);
+    if (type === 'rest' || completedDates[k]) streak++;
+    else break;
+    d.setDate(d.getDate() - 1);
+  }
+  document.getElementById('streak-num').textContent = streak;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ── TAB NAVIGATION ────────────────────────────────────────
+function showTab(name) {
+  currentTab = name;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('nav-' + name)?.classList.add('active');
+  const renders = { today: renderToday, week: renderWeek, planner: renderPlanner, library: renderLibrary, progress: renderProgress };
+  if (renders[name]) renders[name]();
+}
+
+// ── TODAY ─────────────────────────────────────────────────
+function renderToday() {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const key = dateKey(today);
+  const type = getWorkoutType(today);
+  const meta = WORKOUT_META[type];
+  const done = !!completedDates[key];
+  const log = sessionLogs[key] || '';
+  const content = document.getElementById('page-content');
+
+  if (type === 'rest') {
+    content.innerHTML = `
+      <div class="today-hero">
+        <div class="today-date">${today.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })}</div>
+        <div class="today-workout">${meta.name}</div>
+        <div class="today-goal">${meta.goal}</div>
+      </div>
+      <div class="rest-card">
+        <div class="rest-emoji">😴</div>
+        <div class="rest-text">Rest day — sleep well, hydrate, and recover</div>
+      </div>`;
+    return;
+  }
+
+  const workout = buildWorkout(type, today);
+
+  let html = `
+    <div class="today-hero">
+      <div class="today-date">${today.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })}</div>
+      <div class="today-workout">${meta.name}</div>
+      <div class="today-goal" style="color:${meta.color}">${meta.goal}</div>
+      <button class="complete-btn ${done ? 'done' : 'not-done'}" onclick="toggleComplete('${key}', '${type}')">
+        ${done ? '✓ Completed' : '○ Mark complete'}
+      </button>
+    </div>`;
+
+  html += renderWorkoutSections(workout);
+
+  html += `
+    <div class="card">
+      <div class="card-title">Session notes</div>
+      <textarea class="log-area" id="log-area" placeholder="Weights used, energy level, modifications…">${log}</textarea>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn-sm btn-teal" onclick="saveLog('${key}')">Save notes</button>
+      </div>
+    </div>`;
+
+  content.innerHTML = html;
+}
+
+function renderWorkoutSections(workout) {
+  let html = '';
+  const sections = [
+    { label: 'Warm-up', color: '#60a5fa', items: workout.warmup },
+    { label: 'Core', color: '#f59e0b', items: workout.core },
+    { label: 'Strength', color: '#f472b6', items: workout.strength },
+    { label: 'Cool-down', color: '#4ade80', items: workout.cooldown },
+  ];
+  sections.forEach(s => {
+    if (!s.items.length) return;
+    html += `<div class="section-label"><span class="section-dot" style="background:${s.color}"></span>${s.label}</div>`;
+    s.items.forEach(ex => {
+      const meta = [ex.sets ? ex.sets + ' sets' : '', ex.reps].filter(Boolean).join(' · ');
+      html += `<div class="ex-card">
+        <div class="ex-name">${ex.name}</div>
+        ${meta ? `<div class="ex-meta">${meta}</div>` : ''}
+        ${ex.notes ? `<div class="ex-notes">${ex.notes}</div>` : ''}
+      </div>`;
+    });
+  });
+  return html;
+}
+
+async function toggleComplete(key, type) {
+  if (completedDates[key]) {
+    await sb.from('completed_workouts').delete()
+      .eq('user_id', currentUser.id).eq('date', key);
+    delete completedDates[key];
+  } else {
+    await sb.from('completed_workouts').upsert({
+      user_id: currentUser.id, date: key, workout_type: type
+    });
+    completedDates[key] = type;
+  }
+  updateStreak();
+  renderToday();
+}
+
+async function saveLog(key) {
+  const notes = document.getElementById('log-area')?.value || '';
+  await sb.from('session_logs').upsert({
+    user_id: currentUser.id, date: key, notes, updated_at: new Date().toISOString()
+  });
+  sessionLogs[key] = notes;
+  showToast('Notes saved ✓');
+}
+
+// ── WEEK ──────────────────────────────────────────────────
+function renderWeek() {
+  const ws = getWeekStart(weekOffset);
+  const we = new Date(ws); we.setDate(we.getDate() + 6);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
+  let html = `
+    <div class="week-nav">
+      <button class="icon-btn" onclick="changeWeek(-1)">‹</button>
+      <span class="week-label">${ws.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${we.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
+      <button class="icon-btn" onclick="changeWeek(1)">›</button>
+      <button class="btn-sm" onclick="weekOffset=0;selectedDay=null;renderWeek()">Today</button>
+    </div>
+    <div class="day-grid">`;
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(ws); d.setDate(d.getDate() + i);
+    const k = dateKey(d);
+    const type = getWorkoutType(d);
+    const isToday = d.getTime() === today.getTime();
+    const done = !!completedDates[k];
+    const isSel = selectedDay && dateKey(selectedDay) === k;
+    const isRest = type === 'rest';
+
+    html += `<div class="day-cell${isToday?' today':''}${done?' completed':''}${isSel?' selected':''}${isRest?' rest-day':''}"
+      onclick="selectDay(${d.getTime()})">
+      <div class="day-abbr">${DAY_ABBR[d.getDay()]}</div>
+      <div class="day-num">${d.getDate()}</div>
+      ${done ? '<div class="day-check">✓</div>' : (!isRest ? '<div class="day-dot"></div>' : '')}
+    </div>`;
+  }
+
+  html += '</div>';
+
+  if (selectedDay) {
+    const k = dateKey(selectedDay);
+    const type = getWorkoutType(selectedDay);
+    const meta = WORKOUT_META[type];
+    html += `<div class="card">
+      <div style="font-size:14px;font-weight:600;color:var(--white);margin-bottom:2px">
+        ${selectedDay.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}
+      </div>
+      <div style="font-size:12px;color:${meta.color};margin-bottom:12px">${meta.name}</div>`;
+
+    if (type !== 'rest') {
+      const workout = buildWorkout(type, selectedDay);
+      html += renderWorkoutSections(workout);
+    } else {
+      html += `<div class="rest-card"><div class="rest-emoji">😴</div><div class="rest-text">Rest day</div></div>`;
+    }
+    html += '</div>';
+  }
+
+  document.getElementById('page-content').innerHTML = html;
+}
+
+function changeWeek(dir) { weekOffset += dir; selectedDay = null; renderWeek(); }
+function selectDay(ts) { selectedDay = new Date(ts); renderWeek(); }
+
+// ── PLANNER ───────────────────────────────────────────────
+function renderPlanner() {
+  const ws = getWeekStart(weekOffset);
+  const types = Object.keys(WORKOUT_META);
+
+  let html = `<div class="card">
+    <div class="card-title">Weekly planner</div>
+    <p style="font-size:12px;color:var(--slate);margin-bottom:1rem">Override workout assignments for any day this week.</p>`;
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(ws); d.setDate(d.getDate() + i);
+    const k = dateKey(d);
+    const cur = plannerOverrides[k] || getWorkoutType(d);
+    html += `<div class="planner-row">
+      <span class="planner-day">${DAY_ABBR[d.getDay()]}<br><span style="font-size:10px;color:var(--navy3)">${d.getDate()}</span></span>
+      <select class="planner-select" onchange="setPlannerOverride('${k}', this.value)">`;
+    types.forEach(t => {
+      html += `<option value="${t}"${t === cur ? ' selected' : ''}>${WORKOUT_META[t].name}</option>`;
+    });
+    html += `</select>`;
+    if (plannerOverrides[k]) {
+      html += `<button class="btn-sm" onclick="clearPlannerOverride('${k}')" style="padding:6px 8px;font-size:11px">✕</button>`;
+    }
+    html += `</div>`;
+  }
+
+  html += '</div>';
+  document.getElementById('page-content').innerHTML = html;
+}
+
+async function setPlannerOverride(key, value) {
+  await sb.from('planner_overrides').upsert({
+    user_id: currentUser.id, date: key, workout_type: value
+  });
+  plannerOverrides[key] = value;
+  showToast('Planner updated ✓');
+}
+
+async function clearPlannerOverride(key) {
+  await sb.from('planner_overrides').delete()
+    .eq('user_id', currentUser.id).eq('date', key);
+  delete plannerOverrides[key];
+  renderPlanner();
+}
+
+// ── LIBRARY ───────────────────────────────────────────────
+function renderLibrary() {
+  const cats = ['Warm-Up','Core','Lower Body','Upper Push','Upper Pull','Cool-Down'];
+  const allEx = cats.flatMap(c => exerciseLibrary[c] || []);
+  const total = allEx.length;
+  const active = allEx.filter(e => e.active).length;
+
+  let html = `
+    <div class="lib-stats">
+      <div class="stat-box"><div class="stat-num">${total}</div><div class="stat-lbl">Total</div></div>
+      <div class="stat-box"><div class="stat-num">${active}</div><div class="stat-lbl">Active</div></div>
+      <div class="stat-box"><div class="stat-num">${cats.length}</div><div class="stat-lbl">Categories</div></div>
+    </div>`;
+
+  if (currentProfile?.role === 'admin') {
+    html += `
+      <div class="import-zone" onclick="document.getElementById('xlsx-import').click()">
+        <div class="import-icon">📥</div>
+        <div class="import-label">Import from Excel</div>
+        <div class="import-sub">Upload Exercise_Library.xlsx to update the library</div>
+        <input type="file" id="xlsx-import" accept=".xlsx,.xls" style="display:none" onchange="importXLSX(event)">
+      </div>`;
+  }
+
+  cats.forEach(cat => {
+    const exs = exerciseLibrary[cat] || [];
+    const activeCount = exs.filter(e => e.active).length;
+    html += `<div class="cat-header">${cat} <span style="color:var(--slate);font-weight:400;font-size:10px">${activeCount} active / ${exs.length} total</span></div>`;
+    exs.forEach(ex => {
+      const meta = [ex.sets ? ex.sets + ' sets' : '', ex.reps].filter(Boolean).join(' · ');
+      html += `<div class="lib-ex-row${ex.active ? '' : ' inactive'}">
+        <div class="lib-ex-info">
+          <div class="lib-ex-name">${ex.name}</div>
+          ${meta ? `<div class="lib-ex-meta">${meta}</div>` : ''}
+        </div>`;
+      if (currentProfile?.role === 'admin') {
+        html += `<button class="toggle-btn ${ex.active ? 'active-ex' : 'inactive-ex'}" onclick="toggleExercise('${ex.id}', ${!ex.active})">
+          ${ex.active ? 'Active' : 'Inactive'}
+        </button>`;
+      }
+      html += '</div>';
+    });
+  });
+
+  document.getElementById('page-content').innerHTML = html;
+}
+
+async function toggleExercise(id, newActive) {
+  await sb.from('exercises').update({ active: newActive, updated_at: new Date().toISOString() }).eq('id', id);
+  await loadExercises();
+  renderLibrary();
+  showToast(newActive ? 'Exercise activated ✓' : 'Exercise paused');
+}
+
+async function importXLSX(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  // Dynamically load SheetJS
+  if (!window.XLSX) {
+    await new Promise(res => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = res;
+      document.head.appendChild(s);
+    });
+  }
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      let added = 0, updated = 0;
+      for (const row of rows) {
+        const cat   = (row['Category'] || '').trim();
+        const name  = (row['Exercise Name'] || row['Exercise'] || '').trim();
+        const sets  = String(row['Sets'] || '').trim();
+        const reps  = String(row['Reps / Duration'] || row['Reps'] || '').trim();
+        const notes = String(row['Notes / Cues'] || row['Notes'] || '').trim();
+        const active = String(row['Active'] || 'Yes').trim().toLowerCase() !== 'no';
+        if (!cat || !name) continue;
+        // Check if exists
+        const existing = (exerciseLibrary[cat] || []).find(e => e.name.toLowerCase() === name.toLowerCase());
+        if (existing) {
+          await sb.from('exercises').update({ sets, reps, notes, active, updated_at: new Date().toISOString() }).eq('id', existing.id);
+          updated++;
+        } else {
+          await sb.from('exercises').insert({ category: cat, name, sets, reps, notes, active, sort_order: 999 });
+          added++;
+        }
+      }
+      await loadExercises();
+      renderLibrary();
+      showToast(`${added} added, ${updated} updated ✓`);
+    } catch (err) {
+      showToast('Error reading file');
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── ADMIN PANEL ───────────────────────────────────────────
+function showAdminPanel() {
+  document.getElementById('dropdown').classList.remove('open');
+  const cats = ['Warm-Up','Core','Lower Body','Upper Push','Upper Pull','Cool-Down'];
+  document.getElementById('page-content').innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
+      <button class="btn-sm" onclick="showTab('library')">← Back</button>
+      <span style="font-size:16px;font-weight:600;color:var(--white)">Add exercise</span>
+    </div>
+    <div class="card">
+      <div class="admin-form">
+        <select id="new-cat">
+          ${cats.map(c => `<option value="${c}">${c}</option>`).join('')}
+        </select>
+        <input type="text" id="new-name" placeholder="Exercise name">
+        <input type="text" id="new-sets" placeholder="Sets (e.g. 3)">
+        <input type="text" id="new-reps" placeholder="Reps / Duration (e.g. 10-12 reps)">
+        <textarea id="new-notes" placeholder="Notes / form cues…"></textarea>
+        <button class="btn-primary" onclick="addExercise()">Add to library</button>
+      </div>
+    </div>`;
+}
+
+async function addExercise() {
+  const cat   = document.getElementById('new-cat').value;
+  const name  = document.getElementById('new-name').value.trim();
+  const sets  = document.getElementById('new-sets').value.trim();
+  const reps  = document.getElementById('new-reps').value.trim();
+  const notes = document.getElementById('new-notes').value.trim();
+  if (!name) return showToast('Exercise name required');
+  await sb.from('exercises').insert({ category: cat, name, sets, reps, notes, active: true, sort_order: 999 });
+  await loadExercises();
+  showToast(`${name} added ✓`);
+  document.getElementById('new-name').value = '';
+  document.getElementById('new-sets').value = '';
+  document.getElementById('new-reps').value = '';
+  document.getElementById('new-notes').value = '';
+}
+
+// ── PROGRESS ──────────────────────────────────────────────
+function renderProgress() {
+  const dates = Object.keys(completedDates).sort().reverse();
+  const total = dates.length;
+
+  let html = `
+    <div class="lib-stats">
+      <div class="stat-box"><div class="stat-num">${total}</div><div class="stat-lbl">Sessions</div></div>
+      <div class="stat-box"><div class="stat-num" id="streak-num-2">—</div><div class="stat-lbl">Streak</div></div>
+      <div class="stat-box"><div class="stat-num">${Math.round(total * 65)}</div><div class="stat-lbl">Est. mins</div></div>
+    </div>`;
+
+  if (dates.length) {
+    html += `<div class="card"><div class="card-title">Recent sessions</div>`;
+    dates.slice(0, 15).forEach(k => {
+      const d = new Date(k + 'T00:00:00');
+      const type = completedDates[k];
+      const meta = WORKOUT_META[type] || { name: type, color: '#94a3b8' };
+      html += `<div class="progress-row">
+        <div>
+          <div style="font-size:13px;font-weight:500;color:var(--white)">${meta.name}</div>
+          <div class="progress-date">${d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
+        </div>
+        <span class="check-icon">✓</span>
+      </div>`;
+    });
+    html += '</div>';
+  } else {
+    html += `<div class="empty-state">No sessions logged yet.<br>Mark your first workout complete to start tracking.</div>`;
+  }
+
+  document.getElementById('page-content').innerHTML = html;
+  const s2 = document.getElementById('streak-num-2');
+  if (s2) s2.textContent = document.getElementById('streak-num').textContent;
+}
+
+// ── SERVICE WORKER ────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('service-worker.js').catch(() => {});
+}
+</script>
+</body>
+</html>
