@@ -544,10 +544,10 @@ function renderToday(){
     html+=`<div class="session-progress">
       <div class="progress-header">
         <span class="progress-title">Today's progress</span>
-        <span class="progress-count">${doneEx} / ${totalEx} exercises</span>
+        <span class="progress-count"><span id="done-ex-count">${doneEx}</span> / <span id="total-ex-count">${totalEx}</span> exercises</span>
       </div>
       <div class="progress-bar-track">
-        <div class="progress-bar-fill" style="width:${totalEx?Math.round(doneEx/totalEx*100):0}%"></div>
+        <div class="progress-bar-fill" id="progress-bar-fill" style="width:${totalEx?Math.round(doneEx/totalEx*100):0}%"></div>
       </div>
     </div>`;
     html+=renderWorkoutSections(workout,type,today);
@@ -577,12 +577,15 @@ function renderWorkoutSections(workout,type,date){
       const isChecked=todayCompletions[ex.id];
       const isToday=date&&dateKey(date)===dateKey(new Date());
       if(isToday){
-        html+=`<div class="ex-card${isChecked?' checked':''}">
-          <button class="ex-checkbox" onclick="toggleExercise('${ex.id}','${ex.name.replace(/'/g,"\\'")}','${ex.category}','${type||''}','${key}')" style="border:none;cursor:pointer;background:none;padding:0;flex-shrink:0">
-            <span class="ex-check-icon">✓</span>
+        const cbBg=isChecked?'var(--teal)':'var(--navy2)';
+        const cbBorder=isChecked?'var(--teal)':'var(--navy3)';
+        const nameColor=isChecked?'var(--teal)':'var(--white)';
+        html+=`<div class="ex-card${isChecked?' checked':''}" id="ex-${ex.id}">
+          <button class="ex-checkbox" onclick="toggleExercise('${ex.id}','${ex.name.replace(/'/g,"\\'")}','${ex.category}','${type||''}','${key}')" style="border:2px solid ${cbBorder};cursor:pointer;background:${cbBg};padding:0;flex-shrink:0;width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center">
+            <span class="ex-check-icon" style="display:${isChecked?'block':'none'};font-size:12px;color:var(--navy)">✓</span>
           </button>
           <div class="ex-body" onclick="toggleExercise('${ex.id}','${ex.name.replace(/'/g,"\\'")}','${ex.category}','${type||''}','${key}')">
-            <div class="ex-name">${ex.name}</div>
+            <div class="ex-name" style="color:${nameColor}">${ex.name}</div>
             ${meta?`<div class="ex-meta">${meta}</div>`:''}
             ${ex.notes?`<div class="ex-notes">${ex.notes}</div>`:''}
           </div>
@@ -602,24 +605,60 @@ function renderWorkoutSections(workout,type,date){
 }
 
 async function toggleExercise(exId,exName,category,workoutType,dateStr){
-  // Save scroll position
-  const pc=document.getElementById('page-content');
-  if(pc) pc._savedScroll=pc.scrollTop;
-  if(todayCompletions[exId]){
-    await sbDelete('exercise_completions','user_id=eq.'+currentUser.id+'&date=eq.'+dateStr+'&exercise_id=eq.'+exId);
-    delete todayCompletions[exId];
-  }else{
-    await sbPost('exercise_completions',{user_id:currentUser.id,date:dateStr,exercise_id:exId,exercise_name:exName,category:category,workout_type:workoutType},'resolution=merge-duplicates');
-    todayCompletions[exId]=true;
+  const wasChecked=!!todayCompletions[exId];
+  const nowChecked=!wasChecked;
+
+  // Update DOM immediately — no re-render
+  const card=document.getElementById('ex-'+exId);
+  if(card){
+    card.classList.toggle('checked',nowChecked);
+    const checkbox=card.querySelector('.ex-checkbox');
+    if(checkbox){
+      checkbox.style.background=nowChecked?'var(--teal)':'var(--navy2)';
+      checkbox.style.borderColor=nowChecked?'var(--teal)':'var(--navy3)';
+      const icon=checkbox.querySelector('.ex-check-icon');
+      if(icon) icon.style.display=nowChecked?'block':'none';
+    }
+    const nameEl=card.querySelector('.ex-name');
+    if(nameEl) nameEl.style.color=nowChecked?'var(--teal)':'var(--white)';
   }
-  // Update allCompletions cache
-  await loadAllCompletions();
+
+  // Update state
+  if(nowChecked){
+    todayCompletions[exId]=true;
+  }else{
+    delete todayCompletions[exId];
+  }
   updateDoneCount();
-  // Re-render today to reflect new state
-  renderToday();
-  // Restore scroll position
-  const el = document.getElementById('page-content');
-  if(el) el.scrollTop = el._savedScroll || 0;
+  updateProgressBar();
+
+  // Persist to Supabase in background
+  try{
+    if(nowChecked){
+      await sbPost('exercise_completions',{user_id:currentUser.id,date:dateStr,exercise_id:exId,exercise_name:exName,category:category,workout_type:workoutType},'resolution=merge-duplicates');
+    }else{
+      await sbDelete('exercise_completions','user_id=eq.'+currentUser.id+'&date=eq.'+dateStr+'&exercise_id=eq.'+exId);
+    }
+    await loadAllCompletions();
+  }catch(e){
+    // Revert on error
+    if(nowChecked) delete todayCompletions[exId]; else todayCompletions[exId]=true;
+    updateDoneCount();
+    updateProgressBar();
+    if(card) card.classList.toggle('checked',!nowChecked);
+    showToast('Error saving — try again');
+  }
+}
+
+function updateProgressBar(){
+  const total=document.getElementById('total-ex-count');
+  const done=document.getElementById('done-ex-count');
+  const bar=document.getElementById('progress-bar-fill');
+  if(!total||!done||!bar)return;
+  const t=parseInt(total.textContent)||0;
+  const d=Object.keys(todayCompletions).length;
+  done.textContent=d;
+  bar.style.width=(t?Math.round(d/t*100):0)+'%';
 }
 
 async function saveLog(key){
