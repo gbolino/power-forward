@@ -577,15 +577,26 @@ function renderWorkoutSections(workout,type,date){
       const isChecked=todayCompletions[ex.id];
       const isToday=date&&dateKey(date)===dateKey(new Date());
       if(isToday){
-        const cbBg=isChecked?'var(--teal)':'var(--navy2)';
-        const cbBorder=isChecked?'var(--teal)':'var(--navy3)';
-        const nameColor=isChecked?'var(--teal)':'var(--white)';
-        html+=`<div class="ex-card${isChecked?' checked':''}" id="ex-${ex.id}">
-          <button class="ex-checkbox" onclick="toggleExercise('${ex.id}','${ex.name.replace(/'/g,"\\'")}','${ex.category}','${type||''}','${key}')" style="border:2px solid ${cbBorder};cursor:pointer;background:${cbBg};padding:0;flex-shrink:0;width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center">
-            <span class="ex-check-icon" style="display:${isChecked?'block':'none'};font-size:12px;color:var(--navy)">✓</span>
-          </button>
-          <div class="ex-body" onclick="toggleExercise('${ex.id}','${ex.name.replace(/'/g,"\\'")}','${ex.category}','${type||''}','${key}')">
-            <div class="ex-name" style="color:${nameColor}">${ex.name}</div>
+        const cardBg    = isChecked ? 'rgba(45,212,191,0.08)' : 'var(--navy3)';
+        const cardBdr   = isChecked ? 'rgba(45,212,191,0.25)'  : 'transparent';
+        const cbBg      = isChecked ? 'var(--teal)'   : 'var(--navy2)';
+        const cbBdr     = isChecked ? 'var(--teal)'   : 'var(--navy3)';
+        const iconDisp  = isChecked ? 'block' : 'none';
+        const nameClr   = isChecked ? 'var(--teal)'  : 'var(--white)';
+        html+=`<div class="ex-card" id="ex-${ex.id}"
+          style="background:${cardBg};border-color:${cardBdr}"
+          data-exid="${ex.id}"
+          data-exname="${ex.name.replace(/"/g,'&quot;')}"
+          data-cat="${ex.category}"
+          data-wtype="${type||''}"
+          data-date="${key}"
+          ontouchend="handleExTouch(event)"
+          onclick="handleExClick(event)">
+          <div class="ex-checkbox" style="pointer-events:none;background:${cbBg};border-color:${cbBdr};border:2px solid ${cbBdr};width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <span class="ex-check-icon" style="display:${iconDisp};font-size:12px;color:var(--navy)">✓</span>
+          </div>
+          <div class="ex-body" style="pointer-events:none;flex:1;min-width:0">
+            <div class="ex-name" style="color:${nameClr}">${ex.name}</div>
             ${meta?`<div class="ex-meta">${meta}</div>`:''}
             ${ex.notes?`<div class="ex-notes">${ex.notes}</div>`:''}
           </div>
@@ -604,50 +615,91 @@ function renderWorkoutSections(workout,type,date){
   return html;
 }
 
-async function toggleExercise(exId,exName,category,workoutType,dateStr){
-  const wasChecked=!!todayCompletions[exId];
-  const nowChecked=!wasChecked;
+// Single source of truth for toggling
+let _toggling = false;
 
-  // Update DOM immediately — no re-render
-  const card=document.getElementById('ex-'+exId);
-  if(card){
-    card.classList.toggle('checked',nowChecked);
-    const checkbox=card.querySelector('.ex-checkbox');
-    if(checkbox){
-      checkbox.style.background=nowChecked?'var(--teal)':'var(--navy2)';
-      checkbox.style.borderColor=nowChecked?'var(--teal)':'var(--navy3)';
-      const icon=checkbox.querySelector('.ex-check-icon');
-      if(icon) icon.style.display=nowChecked?'block':'none';
-    }
-    const nameEl=card.querySelector('.ex-name');
-    if(nameEl) nameEl.style.color=nowChecked?'var(--teal)':'var(--white)';
-  }
+function handleExTouch(e){
+  e.preventDefault(); // prevents iOS double-fire with onclick
+  const card = e.currentTarget;
+  doToggle(card);
+}
 
-  // Update state
-  if(nowChecked){
-    todayCompletions[exId]=true;
-  }else{
-    delete todayCompletions[exId];
-  }
+function handleExClick(e){
+  // Only fires on non-touch (desktop Safari/Chrome)
+  if(e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents) return;
+  const card = e.currentTarget;
+  doToggle(card);
+}
+
+async function doToggle(card){
+  if(_toggling) return;
+  _toggling = true;
+
+  const exId    = card.dataset.exid;
+  const exName  = card.dataset.exname;
+  const cat     = card.dataset.cat;
+  const wtype   = card.dataset.wtype;
+  const dateStr = card.dataset.date;
+
+  const wasChecked = !!todayCompletions[exId];
+  const nowChecked = !wasChecked;
+
+  // Update state immediately
+  if(nowChecked) todayCompletions[exId]=true;
+  else delete todayCompletions[exId];
+
+  // Update this card's visuals directly
+  applyCardState(card, nowChecked);
   updateDoneCount();
   updateProgressBar();
 
-  // Persist to Supabase in background
+  // Save to Supabase
   try{
     if(nowChecked){
-      await sbPost('exercise_completions',{user_id:currentUser.id,date:dateStr,exercise_id:exId,exercise_name:exName,category:category,workout_type:workoutType},'resolution=merge-duplicates');
+      await sbPost('exercise_completions',
+        {user_id:currentUser.id,date:dateStr,exercise_id:exId,
+         exercise_name:exName,category:cat,workout_type:wtype},
+        'resolution=merge-duplicates');
     }else{
-      await sbDelete('exercise_completions','user_id=eq.'+currentUser.id+'&date=eq.'+dateStr+'&exercise_id=eq.'+exId);
+      await sbDelete('exercise_completions',
+        'user_id=eq.'+currentUser.id+'&date=eq.'+dateStr+'&exercise_id=eq.'+exId);
     }
-    await loadAllCompletions();
-  }catch(e){
-    // Revert on error
+    loadAllCompletions(); // background, no await
+  }catch(err){
+    // Revert
     if(nowChecked) delete todayCompletions[exId]; else todayCompletions[exId]=true;
+    applyCardState(card, !nowChecked);
     updateDoneCount();
     updateProgressBar();
-    if(card) card.classList.toggle('checked',!nowChecked);
-    showToast('Error saving — try again');
+    showToast('Save failed — check connection');
   }
+
+  _toggling = false;
+}
+
+function applyCardState(card, checked){
+  if(!card) return;
+  const cb   = card.querySelector('.ex-checkbox');
+  const icon = card.querySelector('.ex-check-icon');
+  const name = card.querySelector('.ex-name');
+
+  if(checked){
+    card.style.background = 'rgba(45,212,191,0.08)';
+    card.style.borderColor = 'rgba(45,212,191,0.25)';
+    if(cb){ cb.style.background='var(--teal)'; cb.style.borderColor='var(--teal)'; }
+    if(icon) icon.style.display='block';
+    if(name) name.style.color='var(--teal)';
+  }else{
+    card.style.background = 'var(--navy3)';
+    card.style.borderColor = 'transparent';
+    if(cb){ cb.style.background='var(--navy2)'; cb.style.borderColor='var(--navy3)'; }
+    if(icon) icon.style.display='none';
+    if(name) name.style.color='var(--white)';
+  }
+}
+
+async function toggleExercise(exId,exName,category,workoutType,dateStr){
+  // Legacy — not used but kept for safety
 }
 
 function updateProgressBar(){
