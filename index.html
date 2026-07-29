@@ -673,10 +673,28 @@ async function doToggle(card){
   // Save to Supabase
   try{
     if(nowChecked){
-      await sbPost('exercise_completions',
-        {user_id:currentUser.id,date:dateStr,exercise_id:exId,
-         exercise_name:exName,category:cat,workout_type:wtype},
-        'resolution=merge-duplicates');
+      const headers = {
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + SB_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates'
+      };
+      const res = await fetch(SB_URL+'/rest/v1/exercise_completions', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          user_id: currentUser.id,
+          date: dateStr,
+          exercise_id: exId,
+          exercise_name: exName,
+          category: cat,
+          workout_type: wtype
+        })
+      });
+      if(!res.ok && res.status !== 201 && res.status !== 204){
+        const txt = await res.text();
+        throw new Error('HTTP '+res.status+': '+txt);
+      }
     }else{
       await sbDelete('exercise_completions',
         'user_id=eq.'+currentUser.id+'&date=eq.'+dateStr+'&exercise_id=eq.'+exId);
@@ -688,7 +706,7 @@ async function doToggle(card){
     applyCardState(card, !nowChecked);
     updateDoneCount();
     updateProgressBar();
-    showToast('Save failed — check connection');
+    showToast(err.message||'Save failed');
   }
 
   _toggling = false;
