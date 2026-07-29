@@ -82,10 +82,10 @@ body{font-family:var(--font);background:var(--navy);color:var(--light);min-heigh
 .today-goal{font-size:12px;margin-bottom:0}
 
 /* EXERCISE CARDS WITH CHECKBOX */
-.section-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--slate);margin:1rem 0 0.5rem;display:flex;align-items:center;gap:6px}
+.section-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--slate);margin:0.75rem 0 0.35rem;display:flex;align-items:center;gap:6px}
 .section-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 
-.ex-card{background:var(--navy3);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:6px;display:flex;align-items:flex-start;gap:10px;cursor:pointer;transition:all 0.15s;border:1.5px solid transparent}
+.ex-card{background:var(--navy3);border-radius:var(--radius-sm);padding:8px 10px;margin-bottom:5px;display:flex;align-items:flex-start;gap:10px;cursor:pointer;transition:background 0.15s,border-color 0.15s;border:1.5px solid transparent;user-select:none;-webkit-user-select:none}
 .ex-card:hover{border-color:rgba(255,255,255,0.08)}
 .ex-card.checked{background:rgba(45,212,191,0.08);border-color:rgba(45,212,191,0.25)}
 
@@ -95,10 +95,10 @@ body{font-family:var(--font);background:var(--navy);color:var(--light);min-heigh
 .ex-card.checked .ex-check-icon{display:block}
 
 .ex-body{flex:1;min-width:0}
-.ex-name{font-size:14px;font-weight:500;color:var(--white);margin-bottom:2px}
+.ex-name{font-size:13px;font-weight:500;color:var(--white)}
 .ex-card.checked .ex-name{color:var(--teal)}
-.ex-meta{font-size:12px;color:var(--slate)}
-.ex-notes{font-size:11px;color:var(--teal);margin-top:5px;padding:5px 8px;background:rgba(45,212,191,0.07);border-radius:6px;border-left:2px solid var(--teal2);line-height:1.4}
+.ex-meta{font-size:11px;color:var(--slate)}
+.ex-notes{font-size:11px;color:var(--slate);margin-top:4px;padding:3px 6px;background:rgba(45,212,191,0.06);border-radius:4px;border-left:2px solid var(--teal2);line-height:1.35}
 
 /* SESSION PROGRESS BAR */
 .session-progress{background:var(--navy2);border:1px solid var(--navy3);border-radius:var(--radius);padding:1rem;margin-bottom:0.75rem}
@@ -607,14 +607,17 @@ function renderWorkoutSections(workout,type,date){
           data-cat="${ex.category}"
           data-wtype="${type||''}"
           data-date="${key}"
+          ontouchstart="handleExTouchStart(event)"
           ontouchend="handleExTouch(event)"
           onclick="handleExClick(event)">
           <div class="ex-checkbox" style="pointer-events:none;background:${cbBg};border-color:${cbBdr};border:2px solid ${cbBdr};width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
             <span class="ex-check-icon" style="display:${iconDisp};font-size:12px;color:var(--navy)">✓</span>
           </div>
           <div class="ex-body" style="pointer-events:none;flex:1;min-width:0">
-            <div class="ex-name" style="color:${nameClr}">${ex.name}</div>
-            ${meta?`<div class="ex-meta">${meta}</div>`:''}
+            <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+              <span class="ex-name" style="color:${nameClr};flex-shrink:0">${ex.name}</span>
+              ${meta?`<span class="ex-meta" style="white-space:nowrap">${meta}</span>`:''}
+            </div>
             ${ex.notes?`<div class="ex-notes">${ex.notes}</div>`:''}
           </div>
         </div>`;
@@ -634,9 +637,20 @@ function renderWorkoutSections(workout,type,date){
 
 // Single source of truth for toggling
 let _toggling = false;
+let _touchStartX = 0;
+let _touchStartY = 0;
+
+function handleExTouchStart(e){
+  _touchStartX = e.touches[0].clientX;
+  _touchStartY = e.touches[0].clientY;
+}
 
 function handleExTouch(e){
-  e.preventDefault(); // prevents iOS double-fire with onclick
+  const dx = Math.abs(e.changedTouches[0].clientX - _touchStartX);
+  const dy = Math.abs(e.changedTouches[0].clientY - _touchStartY);
+  // If finger moved more than 8px in any direction, it's a scroll — ignore
+  if(dx > 8 || dy > 8) return;
+  e.preventDefault();
   const card = e.currentTarget;
   doToggle(card);
 }
