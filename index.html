@@ -568,9 +568,11 @@ function renderWorkoutSections(workout,type,date){
       const isChecked=todayCompletions[ex.id];
       const isToday=date&&dateKey(date)===dateKey(new Date());
       if(isToday){
-        html+=`<div class="ex-card${isChecked?' checked':''}" onclick="toggleExercise(event,'${ex.id}','${ex.name.replace(/'/g,"\\'")}','${ex.category}','${type||''}','${key}')">
-          <div class="ex-checkbox"><span class="ex-check-icon">✓</span></div>
-          <div class="ex-body">
+        html+=`<div class="ex-card${isChecked?' checked':''}">
+          <button class="ex-checkbox" onclick="toggleExercise('${ex.id}','${ex.name.replace(/'/g,"\\'")}','${ex.category}','${type||''}','${key}')" style="border:none;cursor:pointer;background:none;padding:0;flex-shrink:0">
+            <span class="ex-check-icon">✓</span>
+          </button>
+          <div class="ex-body" onclick="toggleExercise('${ex.id}','${ex.name.replace(/'/g,"\\'")}','${ex.category}','${type||''}','${key}')">
             <div class="ex-name">${ex.name}</div>
             ${meta?`<div class="ex-meta">${meta}</div>`:''}
             ${ex.notes?`<div class="ex-notes">${ex.notes}</div>`:''}
@@ -590,8 +592,7 @@ function renderWorkoutSections(workout,type,date){
   return html;
 }
 
-async function toggleExercise(evt,exId,exName,category,workoutType,dateStr){
-  evt.stopPropagation();
+async function toggleExercise(exId,exName,category,workoutType,dateStr){
   if(todayCompletions[exId]){
     await sbDelete('exercise_completions','user_id=eq.'+currentUser.id+'&date=eq.'+dateStr+'&exercise_id=eq.'+exId);
     delete todayCompletions[exId];
@@ -718,7 +719,11 @@ function renderLibrary(){
       const meta=[ex.sets?ex.sets+' sets':'',ex.reps].filter(Boolean).join(' · ');
       html+=`<div class="lib-ex-row${ex.active?'':' inactive'}">
         <div class="lib-ex-info"><div class="lib-ex-name">${ex.name}</div>${meta?`<div class="lib-ex-meta">${meta}</div>`:''}</div>
-        ${currentUser.role==='admin'?`<button class="toggle-btn ${ex.active?'active-ex':'inactive-ex'}" onclick="toggleExLib('${ex.id}',${!ex.active})">${ex.active?'Active':'Inactive'}</button>`:''}
+        ${currentUser.role==='admin'?`
+          <div style="display:flex;gap:6px;flex-shrink:0;align-items:center">
+            <button class="toggle-btn ${ex.active?'active-ex':'inactive-ex'}" onclick="toggleExLib('${ex.id}',${!ex.active})">${ex.active?'Active':'Inactive'}</button>
+            <button class="toggle-btn inactive-ex" onclick="showEditExercise('${ex.id}')" style="border-color:var(--slate);padding:3px 7px">✏️</button>
+          </div>`:''}
       </div>`;
     });
   });
@@ -832,6 +837,71 @@ function renderProgress(){
 }
 
 // ── ADMIN ─────────────────────────────────────────────────
+function showEditExercise(exId){
+  const cats=['Warm-Up','Core','Lower Body','Upper Push','Upper Pull','Cool-Down'];
+  // Find exercise across all categories
+  let ex=null;
+  for(const cat of cats){
+    ex=(exerciseLibrary[cat]||[]).find(e=>e.id===exId);
+    if(ex)break;
+  }
+  if(!ex){showToast('Exercise not found');return;}
+  document.getElementById('page-content').innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
+      <button class="btn-sm" onclick="showTab('library')">← Back</button>
+      <span style="font-size:16px;font-weight:600;color:var(--white)">Edit exercise</span>
+    </div>
+    <div class="card"><div class="admin-form">
+      <select id="edit-cat">
+        ${cats.map(c=>`<option value="${c}"${c===ex.category?' selected':''}>${c}</option>`).join('')}
+      </select>
+      <input type="text" id="edit-name" value="${ex.name.replace(/"/g,'&quot;')}" placeholder="Exercise name">
+      <input type="text" id="edit-sets" value="${ex.sets||''}" placeholder="Sets (e.g. 3)">
+      <input type="text" id="edit-reps" value="${ex.reps||''}" placeholder="Reps / Duration">
+      <textarea id="edit-notes" placeholder="Notes / form cues…">${ex.notes||''}</textarea>
+      <button class="btn-primary" onclick="saveEditExercise('${ex.id}')">Save changes</button>
+    </div></div>
+    <div class="card" style="border-color:rgba(248,113,113,0.3)">
+      <div class="card-title" style="color:var(--red)">Danger zone</div>
+      <p style="font-size:12px;color:var(--slate);margin-bottom:12px">Permanently delete this exercise. This cannot be undone. Consider deactivating instead if you may want it back.</p>
+      <button class="btn-sm" style="border-color:var(--red);color:var(--red);width:100%" onclick="confirmDeleteExercise('${ex.id}','${ex.name.replace(/'/g,"\'")}')">Delete exercise</button>
+    </div>`;
+}
+
+async function saveEditExercise(exId){
+  const name=document.getElementById('edit-name').value.trim();
+  const cat=document.getElementById('edit-cat').value;
+  const sets=document.getElementById('edit-sets').value.trim();
+  const reps=document.getElementById('edit-reps').value.trim();
+  const notes=document.getElementById('edit-notes').value.trim();
+  if(!name)return showToast('Exercise name required');
+  await sbPatch('exercises','id=eq.'+exId,{name,category:cat,sets,reps,notes,updated_at:new Date().toISOString()});
+  await loadExercises();
+  showToast('Saved ✓');
+  showTab('library');
+}
+
+function confirmDeleteExercise(exId,exName){
+  document.getElementById('page-content').innerHTML+=`
+    <div id="delete-confirm" style="position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:400;padding:1.5rem">
+      <div style="background:var(--navy2);border:1px solid var(--red);border-radius:var(--radius);padding:1.5rem;max-width:320px;width:100%">
+        <div style="font-size:16px;font-weight:600;color:var(--white);margin-bottom:8px">Delete exercise?</div>
+        <div style="font-size:13px;color:var(--slate);margin-bottom:1.5rem">"${exName}" will be permanently removed from the library and all history.</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-sm" style="flex:1" onclick="document.getElementById('delete-confirm').remove()">Cancel</button>
+          <button class="btn-sm" style="flex:1;border-color:var(--red);color:var(--red)" onclick="deleteExercise('${exId}')">Delete</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function deleteExercise(exId){
+  await sbDelete('exercises','id=eq.'+exId);
+  await loadExercises();
+  showToast('Exercise deleted');
+  showTab('library');
+}
+
 function showAdminPanel(){
   document.getElementById('dropdown').classList.remove('open');
   const cats=['Warm-Up','Core','Lower Body','Upper Push','Upper Pull','Cool-Down'];
