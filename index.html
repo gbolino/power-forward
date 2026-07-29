@@ -242,6 +242,7 @@ body{font-family:var(--font);background:var(--navy);color:var(--light);min-heigh
   </div>
   <div class="dropdown" id="dropdown">
     <button class="dropdown-item" onclick="showChangePin()" id="change-pin-item">🔑 Change PIN</button>
+    <button class="dropdown-item" onclick="showSessionSettings()" id="settings-menu-item" style="display:none">⏱ Session settings</button>
     <button class="dropdown-item" onclick="showAdminPanel()" id="admin-menu-item" style="display:none">⚙️ Manage library</button>
     <button class="dropdown-item" onclick="showAddUser()" id="add-user-item" style="display:none">👤 Add family member</button>
     <button class="dropdown-item danger" onclick="handleSignOut()">↩ Switch user</button>
@@ -296,6 +297,7 @@ async function sbPatch(table, params, body){
 let currentUser=null,allUsers=[],selectedUserId=null,pinEntry='';
 let exerciseLibrary={},todayCompletions={},allCompletions=[],plannerOverrides={},sessionLogs={};
 let weekOffset=0,selectedDay=null,currentTab='today',progressPeriod=7;
+let sessionSettings={warmup:4,core:3,strength:6,cooldown:5};
 
 const SCHEDULE=['strength_lower','aerobic','upper_push','rest','upper_pull','rest','aerobic'];
 const WORKOUT_META={
@@ -444,6 +446,9 @@ async function bootApp(){
   plannerOverrides={};
   sessionLogs={};
   exerciseLibrary={};
+  // Load session settings from localStorage
+  const savedSettings=localStorage.getItem('pf_settings');
+  if(savedSettings){ try{ sessionSettings=JSON.parse(savedSettings); }catch(e){} }
 
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app').style.display='flex';
@@ -452,6 +457,7 @@ async function bootApp(){
   if(currentUser.role==='admin'){
     document.getElementById('admin-menu-item').style.display='flex';
     document.getElementById('add-user-item').style.display='flex';
+    document.getElementById('settings-menu-item').style.display='flex';
   }
   document.getElementById('page-content').innerHTML='<div class="loading"><div class="spinner"></div> Loading…</div>';
   try{
@@ -521,12 +527,28 @@ function rotateExercises(category,weekNum,count){
 }
 function buildWorkout(type,date){
   const wn=getWeekNum(date);
+  // Bike warm-up is always first — find it in library
+  const bikeEx=(exerciseLibrary['Warm-Up']||[]).find(e=>e.name.toLowerCase().includes('bike warm'));
+  // Rotation warm-ups exclude bike warm-up
+  const warmupPool=(exerciseLibrary['Warm-Up']||[]).filter(e=>e.active&&!e.name.toLowerCase().includes('bike warm'));
+  const warmupCount=sessionSettings.warmup||4;
+  const wn2=getWeekNum(date);
+  const warmupRotation=rotateFromPool(warmupPool,wn2,warmupCount);
+  const warmup=bikeEx?[bikeEx,...warmupRotation]:warmupRotation;
   return{
-    warmup:rotateExercises('Warm-Up',wn,6),
-    core:rotateExercises('Core',wn,3),
-    strength:(CAT_MAP[type]||[]).flatMap(cat=>rotateExercises(cat,wn,6)),
-    cooldown:rotateExercises('Cool-Down',wn,5)
+    warmup,
+    core:rotateExercises('Core',wn,sessionSettings.core||3),
+    strength:(CAT_MAP[type]||[]).flatMap(cat=>rotateExercises(cat,wn,sessionSettings.strength||6)),
+    cooldown:rotateExercises('Cool-Down',wn,sessionSettings.cooldown||5)
   };
+}
+
+function rotateFromPool(pool,weekNum,count){
+  if(!pool.length)return[];
+  const start=(weekNum*count)%pool.length;
+  const result=[];
+  for(let i=0;i<Math.min(count,pool.length);i++)result.push(pool[(start+i)%pool.length]);
+  return result;
 }
 function getWeekStart(offset=0){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-d.getDay()+offset*7);return d;}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000);}
@@ -1056,6 +1078,69 @@ async function deleteExercise(exId){
   await loadExercises();
   showToast('Exercise deleted');
   showTab('library');
+}
+
+function showSessionSettings(){
+  document.getElementById('dropdown').classList.remove('open');
+  document.getElementById('page-content').innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
+      <button class="btn-sm" onclick="showTab('today')">← Back</button>
+      <span style="font-size:16px;font-weight:600;color:var(--white)">Session settings</span>
+    </div>
+    <div class="card">
+      <p style="font-size:12px;color:var(--slate);margin-bottom:1.25rem">
+        Set how many exercises appear in each section per session.
+        Bike warm-up always appears first and is not counted here.
+      </p>
+      ${renderSettingRow('Warm-up exercises','warmup',1,10)}
+      ${renderSettingRow('Core exercises','core',1,8)}
+      ${renderSettingRow('Strength exercises','strength',1,12)}
+      ${renderSettingRow('Cool-down exercises','cooldown',1,10)}
+      <button class="btn-primary" style="margin-top:1rem" onclick="saveSessionSettings()">Save settings</button>
+    </div>
+    <div class="card" style="font-size:12px;color:var(--slate)">
+      <div style="font-weight:600;color:var(--light);margin-bottom:6px">Estimated session time</div>
+      <div id="time-estimate">—</div>
+    </div>`;
+  updateTimeEstimate();
+}
+
+function renderSettingRow(label,key,min,max){
+  const val=sessionSettings[key]||4;
+  return`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--navy3)">
+    <span style="font-size:13px;color:var(--light)">${label}</span>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="icon-btn" onclick="adjustSetting('${key}',-1,${min},${max})" style="width:28px;height:28px;font-size:18px">−</button>
+      <span id="setting-${key}" style="font-size:16px;font-weight:600;color:var(--teal);min-width:20px;text-align:center">${val}</span>
+      <button class="icon-btn" onclick="adjustSetting('${key}',1,${min},${max})" style="width:28px;height:28px;font-size:18px">+</button>
+    </div>
+  </div>`;
+}
+
+function adjustSetting(key,delta,min,max){
+  sessionSettings[key]=Math.min(max,Math.max(min,(sessionSettings[key]||4)+delta));
+  const el=document.getElementById('setting-'+key);
+  if(el) el.textContent=sessionSettings[key];
+  updateTimeEstimate();
+}
+
+function updateTimeEstimate(){
+  const el=document.getElementById('time-estimate');
+  if(!el)return;
+  // Rough estimates: bike=10min, warmup ex=1.5min, core=3min, strength=4min, cooldown=1.5min
+  const bike=10;
+  const wu=(sessionSettings.warmup||4)*1.5;
+  const core=(sessionSettings.core||3)*3;
+  const str=(sessionSettings.strength||6)*4;
+  const cd=(sessionSettings.cooldown||5)*1.5;
+  const total=Math.round(bike+wu+core+str+cd);
+  el.textContent=`Bike warm-up (10 min) + ${sessionSettings.warmup||4} warm-up + ${sessionSettings.core||3} core + ${sessionSettings.strength||6} strength + ${sessionSettings.cooldown||5} cool-down ≈ ${total} minutes`;
+}
+
+function saveSessionSettings(){
+  localStorage.setItem('pf_settings',JSON.stringify(sessionSettings));
+  showToast('Settings saved ✓');
+  showTab('today');
 }
 
 function showAdminPanel(){
