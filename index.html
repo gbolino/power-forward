@@ -263,16 +263,33 @@ body{font-family:var(--font);background:var(--navy);color:var(--light);min-heigh
 const SB_URL='https://jerkvuymqzpsahsmoimw.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Implcmt2dXltcXpwc2Foc21vaW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMzI0NDksImV4cCI6MjEwMDkwODQ0OX0.UH--Bz5I9TXHw1JVyzsX6j7q7Oe6KNF1huQWYRCYNSI';
 
-async function sbFetch(path,opts={}){
-  const res=await fetch(SB_URL+path,{...opts,headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':opts.prefer||'',...(opts.headers||{})}});
-  if(!res.ok&&res.status!==204){const e=await res.text();throw new Error(e);}
-  if(res.status===204)return null;
+async function sbFetch(path, method, body, prefer){
+  const headers = {
+    'apikey': SB_KEY,
+    'Authorization': 'Bearer ' + SB_KEY,
+    'Content-Type': 'application/json'
+  };
+  if(prefer) headers['Prefer'] = prefer;
+  const opts = { method: method||'GET', headers };
+  if(body !== undefined) opts.body = JSON.stringify(body);
+  const res = await fetch(SB_URL + path, opts);
+  // 200, 201 = success with body; 204 = success no body
+  if(res.status === 204 || res.status === 201) return null;
+  if(!res.ok){ const e = await res.text(); throw new Error(e); }
   return res.json();
 }
-async function sbGet(table,params=''){return sbFetch('/rest/v1/'+table+'?'+params);}
-async function sbPost(table,body,prefer=''){return sbFetch('/rest/v1/'+table,{method:'POST',prefer,headers:prefer?{'Prefer':prefer}:{},body:JSON.stringify(body)});}
-async function sbDelete(table,params){return sbFetch('/rest/v1/'+table+'?'+params,{method:'DELETE'});}
-async function sbPatch(table,params,body){return sbFetch('/rest/v1/'+table+'?'+params,{method:'PATCH',body:JSON.stringify(body)});}
+async function sbGet(table, params){
+  return sbFetch('/rest/v1/'+table+'?'+(params||''), 'GET');
+}
+async function sbPost(table, body, prefer){
+  return sbFetch('/rest/v1/'+table, 'POST', body, prefer||'resolution=merge-duplicates');
+}
+async function sbDelete(table, params){
+  return sbFetch('/rest/v1/'+table+'?'+(params||''), 'DELETE');
+}
+async function sbPatch(table, params, body){
+  return sbFetch('/rest/v1/'+table+'?'+(params||''), 'PATCH', body);
+}
 
 // ── STATE ─────────────────────────────────────────────────
 let currentUser=null,allUsers=[],selectedUserId=null,pinEntry='';
