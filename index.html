@@ -892,7 +892,7 @@ async function handleLogin() {
   if (!email || !password) return setAuthMsg('Please enter your email and password.', true);
   setAuthMsg('Signing in…', false);
   const { error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) setAuthMsg(error.message, true);
+  if (error && error.message) setAuthMsg(error.message, true); else if (!error) setAuthMsg("Signed in! Loading…", false);
 }
 
 async function handleSignup() {
@@ -959,8 +959,17 @@ async function bootApp() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
 
-  // Load profile
-  const { data: prof } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  // Load profile - create one if missing (handles SQL-inserted users)
+  let { data: prof } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  if (!prof) {
+    const displayName = currentUser.user_metadata?.display_name || currentUser.email.split('@')[0];
+    const { data: newProf } = await sb.from('profiles').insert({
+      id: currentUser.id,
+      display_name: displayName,
+      role: 'member'
+    }).select().single();
+    prof = newProf;
+  }
   currentProfile = prof;
 
   // Update header
