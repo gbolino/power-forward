@@ -983,15 +983,21 @@ async function bootApp() {
   }
 
   // Load all data in parallel
-  await Promise.all([
-    loadExercises(),
-    loadCompletedDates(),
-    loadPlannerOverrides(),
-    loadSessionLogs(),
-  ]);
-
-  updateStreak();
-  showTab('today');
+  try {
+    await Promise.all([
+      loadExercises(),
+      loadCompletedDates(),
+      loadPlannerOverrides(),
+      loadSessionLogs(),
+    ]);
+    updateStreak();
+    showTab('today');
+  } catch(err) {
+    document.getElementById('page-content').innerHTML =
+      '<div style="padding:2rem;color:#f87171;font-size:14px">' +
+      '<b>Error loading app:</b><br><br>' + err.message + '<br><br>' +
+      '<pre style="font-size:11px;white-space:pre-wrap">' + err.stack + '</pre></div>';
+  }
 }
 
 // ── DATA LOADERS ──────────────────────────────────────────
