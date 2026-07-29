@@ -844,32 +844,74 @@ function selectDay(ts){selectedDay=new Date(ts);renderWeek();}
 
 // ── PLANNER ───────────────────────────────────────────────
 function renderPlanner(){
-  const ws=getWeekStart(weekOffset),types=Object.keys(WORKOUT_META);
-  let html=`<div class="card"><div class="card-title">Weekly planner</div>
-    <p style="font-size:12px;color:var(--slate);margin-bottom:1rem">Override workout assignments for any day.</p>`;
+  const ws=getWeekStart(weekOffset);
+  const we=new Date(ws); we.setDate(we.getDate()+6);
+  const types=Object.keys(WORKOUT_META);
+  const today=new Date(); today.setHours(0,0,0,0);
+  const isCurrentWeek=weekOffset===0;
+
+  let html=`<div class="week-nav">
+    <button class="icon-btn" onclick="changePlannerWeek(-1)">‹</button>
+    <span class="week-label">${ws.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${we.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
+    <button class="icon-btn" onclick="changePlannerWeek(1)">›</button>
+    <button class="btn-sm" onclick="weekOffset=0;renderPlanner()">This week</button>
+  </div>
+  <div class="card">
+    <div class="card-title">Workout assignments</div>
+    <p style="font-size:12px;color:var(--slate);margin-bottom:1rem">
+      Overrides apply to specific dates. Next week resets to the default rotation unless you set it here.
+    </p>`;
+
   for(let i=0;i<7;i++){
     const d=new Date(ws);d.setDate(d.getDate()+i);
-    const k=dateKey(d),cur=plannerOverrides[k]||getWorkoutType(d);
-    html+=`<div class="planner-row">
-      <span class="planner-day">${DAY_ABBR[d.getDay()]}<br><span style="font-size:10px">${d.getDate()}</span></span>
+    const k=dateKey(d);
+    const defaultType=getWorkoutTypeDefault(d);
+    const cur=plannerOverrides[k]||defaultType;
+    const isOverridden=!!plannerOverrides[k];
+    const isToday=d.getTime()===today.getTime();
+
+    html+=`<div class="planner-row" style="${isToday?'background:rgba(45,212,191,0.05);border-radius:8px;padding:10px 6px;':''}">
+      <span class="planner-day" style="${isToday?'color:var(--teal)':''}">
+        ${DAY_ABBR[d.getDay()]}<br>
+        <span style="font-size:10px;color:var(--slate)">${d.getDate()}</span>
+      </span>
       <select class="planner-select" onchange="setPlannerOverride('${k}',this.value)">
         ${types.map(t=>`<option value="${t}"${t===cur?' selected':''}>${WORKOUT_META[t].name}</option>`).join('')}
       </select>
-      ${plannerOverrides[k]?`<button class="btn-sm" onclick="clearPlannerOverride('${k}')" style="padding:6px 8px;font-size:11px">✕</button>`:''}
+      ${isOverridden?`<button class="btn-sm" onclick="clearPlannerOverride('${k}')" style="padding:6px 8px;font-size:11px;color:var(--slate)" title="Reset to default">↺</button>`:'<span style="min-width:36px"></span>'}
     </div>`;
   }
   html+='</div>';
   document.getElementById('page-content').innerHTML=html;
 }
 
+function changePlannerWeek(dir){
+  weekOffset+=dir;
+  renderPlanner();
+}
+
+// Default workout type without planner overrides (for display purposes)
+function getWorkoutTypeDefault(date){
+  const base=new Date(2024,0,7);
+  const diff=Math.floor((date-base)/86400000);
+  return SCHEDULE[((diff%7)+7)%7];
+}
+
 async function setPlannerOverride(key,value){
-  await sbPost('planner_overrides',{user_id:currentUser.id,date:key,workout_type:value},'resolution=merge-duplicates');
-  plannerOverrides[key]=value;showToast('Planner updated ✓');
+  try{
+    await sbPost('planner_overrides',{user_id:currentUser.id,date:key,workout_type:value},'resolution=merge-duplicates');
+    plannerOverrides[key]=value;
+    showToast('Planner updated ✓');
+    renderPlanner();
+  }catch(e){
+    showToast('Error saving: '+e.message);
+  }
 }
 
 async function clearPlannerOverride(key){
   await sbDelete('planner_overrides','user_id=eq.'+currentUser.id+'&date=eq.'+key);
-  delete plannerOverrides[key];renderPlanner();
+  delete plannerOverrides[key];
+  renderPlanner();
 }
 
 // ── LIBRARY ───────────────────────────────────────────────
